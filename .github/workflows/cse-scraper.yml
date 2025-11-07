@@ -36,6 +36,7 @@ jobs:
             --url "https://www.casablanca-bourse.com/fr/live-market/marche-actions-groupement" \
             --output cse_groupement.csv \
             --once \
+            --insecure \
             --tz "Africa/Casablanca"
 
       - name: Upload CSV as artifact (always)

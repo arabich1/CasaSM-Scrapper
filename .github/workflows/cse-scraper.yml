@@ -1,0 +1,82 @@
+name: CSE Scraper
+
+on:
+  schedule:
+    - cron: '*/15 * * * *' # every 15 minutes (UTC cron)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with write access)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir -r requirements.txt
+
+      - name: Run scraper
+        env:
+          TZ: 'Africa/Casablanca'
+        run: |
+          python casablanca_scraper.py \
+            --url "https://www.casablanca-bourse.com/fr/live-market/marche-actions-groupement" \
+            --output cse_groupement.csv \
+            --once \
+            --tz "Africa/Casablanca"
+
+      - name: Upload CSV as artifact (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cse_groupement.csv
+          path: cse_groupement.csv
+
+      - name: Push CSV to data branch (force update)
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Create an orphan commit containing only the CSV on branch 'data'
+          git checkout --orphan data-temp || true
+          git rm -rf . >/dev/null 2>&1 || true
+          git add cse_groupement.csv
+          if git diff --staged --quiet; then
+            echo "No changes to commit to data branch"
+          else
+            git commit -m "Update CSE CSV: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          fi
+          # Force-push the single-file branch to 'data'
+          git push --force origin HEAD:data
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = 'CSE scraper failed on ' + context.runId;
+            const body = 'The scheduled CSE scraper run failed.\n\n' +
+              'Run: ' + context.runId + '\n' +
+              'Workflow: ' + context.workflow + '\n' +
+              'Repository: ' + context.repo.owner + '/' + context.repo.repo + '\n\n' +
+              'Check the logs for details: ' + process.env.GITHUB_SERVER_URL + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+            });

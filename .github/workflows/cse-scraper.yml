@@ -32,12 +32,17 @@ jobs:
         env:
           TZ: 'Africa/Casablanca'
         run: |
+          ls -la
+          python --version
+          python -c "import sys; print(sys.path)"
           python casablanca_scraper.py \
             --url "https://www.casablanca-bourse.com/fr/live-market/marche-actions-groupement" \
             --output cse_groupement.csv \
             --once \
+            --fresh \
             --insecure \
-            --tz "Africa/Casablanca"
+            --tz "Africa/Casablanca" 2>&1
+          ls -la cse_groupement.csv
 
       - name: Upload CSV as artifact (always)
         if: always()

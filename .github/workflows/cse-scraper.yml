@@ -17,6 +17,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
+          fetch-depth: 1
+
+      - name: Debug repository contents
+        run: |
+          echo "Current directory contents:"
+          ls -la
+          echo "\nRepository root contents:"
+          ls -la $GITHUB_WORKSPACE
+          echo "\nFinding requirements.txt:"
+          find $GITHUB_WORKSPACE -name requirements.txt
 
       - name: Set up Python
         uses: actions/setup-python@v4

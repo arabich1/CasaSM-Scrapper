@@ -70,6 +70,7 @@ jobs:
         shell: bash
         run: |
           set -e
+          original_branch=$(git rev-parse --abbrev-ref HEAD)
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           csv_path="cse_groupement.csv"
@@ -87,7 +88,7 @@ jobs:
           fi
           # Force-push the single-file branch to 'data'
           git push --force origin HEAD:data
-          git checkout -
+          git checkout "$original_branch"
           rm -rf "$temp_dir"
 
       - name: Create issue on failure

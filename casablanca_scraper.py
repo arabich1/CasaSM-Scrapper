@@ -301,8 +301,8 @@ def main():
         nec_start = "10:00"  # approximate FO end in Ramadan
         nec_end = "13:20"
     else:
-        nec_start = "09:30"
-        nec_end = "15:20"
+        nec_start = "09:16"
+        nec_end = "16:01"
 
     # determine timezone to use for scheduling
     if args.tz and ZoneInfo is not None:
@@ -311,6 +311,9 @@ def main():
         tzinfo = timezone(timedelta(hours=1))
 
     now_local = datetime.now(tzinfo)
+    if now_local.weekday() >= 5:
+        print("[main] Weekend detected; skipping scheduled runs.")
+        return
     runs = generate_run_times_for_day(now_local, nec_start, nec_end, interval_minutes=max(1, args.interval_minutes), offset_minutes=1, tzinfo=tzinfo)
     # filter runs that are still in the future (or allow a small grace for immediate run)
     runs_to_do = [r for r in runs if r >= now_local]

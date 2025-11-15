@@ -2,7 +2,7 @@ name: CSE Scraper
 
 on:
   schedule:
-    - cron: '*/15 * * * *' # every 15 minutes (UTC cron)
+    - cron: '16 8 * * 1-5' # 09:16 Africa/Casablanca on weekdays
   workflow_dispatch: {}
 
 permissions:
@@ -53,7 +53,7 @@ jobs:
           python casablanca_scraper.py \
             --url "https://www.casablanca-bourse.com/fr/live-market/marche-actions-groupement" \
             --output cse_groupement.csv \
-            --once \
+            --interval-minutes 15 \
             --fresh \
             --insecure \
             --tz "Africa/Casablanca" 2>&1

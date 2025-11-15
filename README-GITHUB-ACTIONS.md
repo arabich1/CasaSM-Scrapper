@@ -1,15 +1,15 @@
-CSE scraper — GitHub Actions setup
+CSE scraper – GitHub Actions setup
 
 What I implemented for you
 
-- A scheduled GitHub Actions workflow in `.github/workflows/cse-scraper.yml` that:
-  - Runs every 15 minutes (cron '*/15 * * * *' in UTC).
-  - Sets up Python, installs dependencies from `requirements.txt` and runs `casablanca_scraper.py` once.
+- A scheduled GitHub Actions workflow in `.github/workflows/main.yml` that:
+  - Triggers every weekday at 09:16 Africa/Casablanca (cron `16 8 * * 1-5` in UTC) and lets the script loop internally every 15 minutes until 16:01.
+  - Sets up Python, installs dependencies from `requirements.txt`, and runs `casablanca_scraper.py` in continuous mode (no `--once`).
   - Uploads `cse_groupement.csv` as an artifact for each run (always).
   - Pushes (force-updates) a `data` branch containing only the latest CSV.
   - Creates a GitHub Issue if the job fails (so you get notified).
 - `requirements.txt` with pinned dependency minima.
-- The scraper (`casablanca_scraper.py`) was adjusted to write new CSVs with `utf-8-sig`, remove commas from categories, and supports `--fresh`, `--tz`, and market-window scheduling.
+- The scraper (`casablanca_scraper.py`) writes new CSVs with `utf-8-sig`, removes commas from categories, and now enforces weekday-only runs between 09:16 and 16:01 (unless you manually run with `--once`).
 
 What you need to do (manual steps I cannot perform for you)
 
@@ -32,13 +32,13 @@ git push -u origin main
 
 3) Check the first run
 
-- Go to the repository → Actions tab → run the workflow (there will also be a scheduled run).
+- Go to the repository → “Actions” tab → run the workflow (there will also be an automatic weekday run).
 - Open the run logs to confirm the scraper executed successfully.
 - Download the artifact `cse_groupement.csv` from the run (or visit branch `data` once it's pushed).
 
 4) TLS / certificates
 
-- I left the workflow running the script without `--insecure`. If the run fails with certificate errors, tell me and I will switch the workflow to pass certifi or set REQUESTS_CA_BUNDLE. Running on GitHub runners normally works without `--insecure`.
+- The workflow currently passes `--insecure` to avoid TLS trust issues on the Casablanca site. Remove that flag later if the upstream certificate chain stabilizes.
 
 5) Optional: Protect the `data` branch
 
@@ -46,7 +46,7 @@ git push -u origin main
 
 6) Notifications (optional)
 
-- I created issues on failure. If you prefer Slack/email, provide a webhook or SMTP details and I’ll add a notifier step.
+- I created issues on failure. If you prefer Slack/email, provide a webhook or SMTP details and I'll add a notifier step.
 
 Small suggestions
 
@@ -56,6 +56,6 @@ Small suggestions
 If you want I can:
 - Add Slack/email notifications (you'll need to provide a webhook or SMTP credentials as a secret).
 - Replace issue creation with a different notifier.
-- Make the workflow skip runs outside market hours by adding a short script check (recommended to avoid runs overnight).
+- Extend the market window logic further (e.g., holiday calendar, intraday alerts).
 
 Tell me which of these you want next and I'll implement it (or provide exact commands you can run).

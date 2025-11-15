@@ -72,10 +72,14 @@ jobs:
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          csv_path="cse_groupement.csv"
+          temp_dir=$(mktemp -d)
+          cp "$csv_path" "$temp_dir/"
           # Create an orphan commit containing only the CSV on branch 'data'
           git checkout --orphan data-temp || true
           git rm -rf . >/dev/null 2>&1 || true
-          git add cse_groupement.csv
+          cp "$temp_dir/$csv_path" .
+          git add "$csv_path"
           if git diff --staged --quiet; then
             echo "No changes to commit to data branch"
           else
@@ -83,6 +87,8 @@ jobs:
           fi
           # Force-push the single-file branch to 'data'
           git push --force origin HEAD:data
+          git checkout -
+          rm -rf "$temp_dir"
 
       - name: Create issue on failure
         if: failure()

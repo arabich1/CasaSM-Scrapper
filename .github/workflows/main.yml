@@ -2,109 +2,39 @@ name: CSE Scraper
 
 on:
   schedule:
-    - cron: '16 8 * * 1-5' # 09:16 Africa/Casablanca on weekdays
-  workflow_dispatch: {}
-
-permissions:
-  contents: write
-  issues: write
+    # Every 15 minutes from 9:00 to 16:00 Mon-Fri (Africa/Casablanca)
+    - cron: "0,15,30,45 9-16 * * 1-5"
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout (with write access)
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-          fetch-depth: 1
 
-      - name: Debug repository contents
-        run: |
-          echo "Current directory contents:"
-          ls -la
-          echo "\nRepository root contents:"
-          ls -la $GITHUB_WORKSPACE
-          echo "\nFinding requirements.txt:"
-          find $GITHUB_WORKSPACE -name requirements.txt
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
-          echo "Current directory:"
-          pwd
-          echo "\nDirectory contents:"
-          ls -la
-          echo "\nInstalling dependencies:"
           python -m pip install --upgrade pip
-          pip install --no-cache-dir -r requirements.txt
+          pip install requests beautifulsoup4 lxml certifi
 
       - name: Run scraper
-        env:
-          TZ: 'Africa/Casablanca'
         run: |
-          ls -la
-          python --version
-          python -c "import sys; print(sys.path)"
           python casablanca_scraper.py \
             --url "https://www.casablanca-bourse.com/fr/live-market/marche-actions-groupement" \
             --output cse_groupement.csv \
-            --interval-minutes 15 \
-            --fresh \
-            --insecure \
-            --tz "Africa/Casablanca" 2>&1
-          ls -la cse_groupement.csv
+            --once \
+            --tz Africa/Casablanca
 
-      - name: Upload CSV as artifact (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cse_groupement.csv
-          path: cse_groupement.csv
-
-      - name: Push CSV to data branch (force update)
-        shell: bash
+      - name: Commit CSV
         run: |
-          set -e
-          original_branch=$(git rev-parse --abbrev-ref HEAD)
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          csv_path="cse_groupement.csv"
-          temp_dir=$(mktemp -d)
-          cp "$csv_path" "$temp_dir/"
-          # Create an orphan commit containing only the CSV on branch 'data'
-          git checkout --orphan data-temp || true
-          git rm -rf . >/dev/null 2>&1 || true
-          cp "$temp_dir/$csv_path" .
-          git add "$csv_path"
-          if git diff --staged --quiet; then
-            echo "No changes to commit to data branch"
-          else
-            git commit -m "Update CSE CSV: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          fi
-          # Force-push the single-file branch to 'data'
-          git push --force origin HEAD:data
-          git checkout "$original_branch"
-          rm -rf "$temp_dir"
-
-      - name: Create issue on failure
-        if: failure()
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const title = 'CSE scraper failed on ' + context.runId;
-            const body = 'The scheduled CSE scraper run failed.\n\n' +
-              'Run: ' + context.runId + '\n' +
-              'Workflow: ' + context.workflow + '\n' +
-              'Repository: ' + context.repo.owner + '/' + context.repo.repo + '\n\n' +
-              'Check the logs for details: ' + process.env.GITHUB_SERVER_URL + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId;
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: title,
-              body: body,
-            });
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add cse_groupement.csv
+          git commit -m "Update CSV [skip ci]" || echo "No changes"
+          git push
